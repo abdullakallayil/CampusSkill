@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: campusskill
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        value: campusskill_super_secret_jwt_key_2024
+      - key: CLIENT_URL
+        value: https://campusskill.onrender.com
+      # To connect your free MongoDB Atlas database, add your MONGO_URI in the Render dashboard:
+      # - key: MONGO_URI
+      #   value: mongodb+srv://<username>:<password>@cluster.mongodb.net/campusskill

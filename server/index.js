@@ -3,16 +3,17 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+const fs = require('fs');
+
 const app = express();
 const connectDB = require('./db');
 
 // Connect to MongoDB
 connectDB();
 
-
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -33,7 +34,19 @@ app.use('/api/admin', require('./routes/admin'));
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'CampusSkill API is running ✅' }));
 
-// 404 fallback
+// Serve static React client build in production
+const clientDist = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+      return res.sendFile(path.join(clientDist, 'index.html'));
+    }
+    next();
+  });
+}
+
+// 404 fallback for API / unmatched paths
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 
 // Global error handler

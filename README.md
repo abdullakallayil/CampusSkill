@@ -81,9 +81,29 @@ npm start
 ```
 *(or `npm run dev`)*
 
-- **Frontend Application**: [http://localhost:5173](http://localhost:5173)
+- **Frontend Application (Dev)**: [http://localhost:5173](http://localhost:5173)
 - **Backend API Server**: [http://localhost:5000](http://localhost:5000)
 - **API Health Check**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
+
+---
+
+## 🌐 Deploy Live Online for Free (Render.com)
+
+CampusSkill is configured as a unified single-service application. Both the React frontend and Express backend are served together on a single public URL.
+
+1. **Sign in to [Render.com](https://render.com)** (Free, sign in with GitHub).
+2. Click **New +** > **Web Service**.
+3. Select your repository: **`abdullakallayil/CampusSkill`**.
+4. Configure the settings (or let Render auto-detect from `render.yaml`):
+   - **Environment**: `Node`
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+5. *(Optional for persistence)*: In **Environment Variables**, add:
+   - `MONGO_URI`: `mongodb+srv://<username>:<password>@cluster1.3iyndhr.mongodb.net/campusskill`
+   - `JWT_SECRET`: `campusskill_super_secret_jwt_key_2024`
+6. Click **Deploy Web Service**!
+7. Within 2-3 minutes, Render gives you a public URL (e.g. `https://campusskill.onrender.com`) that anyone in the world can open, with full frontend and working backend API!
 
 ---
 

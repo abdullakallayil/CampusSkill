@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const isLocalVite = typeof window !== 'undefined' && window.location.port === '5173';
+const defaultBaseURL = isLocalVite ? 'http://localhost:5000/api' : '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || defaultBaseURL,
   headers: { 'Content-Type': 'application/json' }
 });
 
