@@ -1,0 +1,26 @@
+Please implement an "AI Proposal Writer" feature for the CampusSkill project using Node.js/Express, MySQL, and React[cite: 7, 13, 14].
+
+Here are the requirements:
+
+1. Setup & Environment:
+- Use the `@google/genai` package with the `gemini-2.5-flash` model (free tier).
+- Load the API key securely using `process.env.GEMINI_API_KEY`.
+
+2. Backend Endpoint:
+- Create a POST route `/api/ai/generate-proposal` in Express[cite: 7].
+- Expect a JSON body containing `job_description`, `job_title`, and `student_skills`.
+- Write a prompt instructing Gemini to act as an expert career assistant that generates a concise, professional, 3-paragraph freelance proposal tailored specifically for college student freelancers[cite: 1, 3, 4].
+- Return the generated string in a JSON response (`{ proposal: "..." }`).
+
+3. Database Update:
+- Update the SQL query for creating an application so that when a proposal is submitted, it saves into the `proposal` field of the `Applications` table in MySQL[cite: 9, 13].
+
+4. Frontend Component (React):
+- In the Job Application modal/form where students apply for a job[cite: 6, 8, 10]:
+  - Add an "AI Pitch Assist" button next to the Proposal text area.
+  - When clicked, show a loading spinner, fetch student details and job requirements, send a request to `/api/ai/generate-proposal`, and automatically populate the Proposal text area with the response.
+  - Ensure the user can still edit the generated text before submitting the application.
+
+5. Code Quality:
+- Add error handling for empty fields and API limits.
+- Keep the UI clean, responsive, and student-friendly[cite: 4, 5, 6].
