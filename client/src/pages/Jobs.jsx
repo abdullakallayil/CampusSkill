@@ -16,7 +16,7 @@ const MOCK_JOBS = [
 
 export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [category, setCategory] = useState(searchParams.get('category') || '');
@@ -28,10 +28,10 @@ export default function Jobs() {
     if (search) params.set('search', search);
     if (category) params.set('category', category);
 
-    api.get(`/jobs?${params}`).then(r => {
-      if (r.data.length) setJobs(r.data);
-      else setJobs(MOCK_JOBS);
-    }).catch(() => setJobs(MOCK_JOBS)).finally(() => setLoading(false));
+    api.get(`/jobs?${params}`)
+      .then(r => setJobs(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setJobs([]))
+      .finally(() => setLoading(false));
   }, [search, category]);
 
   const filtered = jobs.filter(j => {

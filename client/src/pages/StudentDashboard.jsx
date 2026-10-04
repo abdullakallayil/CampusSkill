@@ -26,19 +26,26 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
-  const [applications, setApplications] = useState(MOCK_APPLICATIONS);
-  const [portfolio, setPortfolio] = useState(MOCK_PORTFOLIO);
-  const [allSkills, setAllSkills] = useState(ALL_SKILLS);
-  const [mySkills, setMySkills] = useState([{ skill_id: 1, skill_name: 'Web Development' }, { skill_id: 2, skill_name: 'React.js' }]);
+  const [applications, setApplications] = useState([]);
+  const [portfolio, setPortfolio] = useState([]);
+  const [allSkills, setAllSkills] = useState([]);
+  const [mySkills, setMySkills] = useState([]);
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [portfolioForm, setPortfolioForm] = useState({ title: '', description: '', project_link: '', category: '' });
   const [savingPortfolio, setSavingPortfolio] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', college: '', bio: '', location: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
-    api.get('/applications/student/my').then(r => r.data.length && setApplications(r.data)).catch(() => {});
-    api.get('/portfolio/my').then(r => r.data.length && setPortfolio(r.data)).catch(() => {});
-    api.get('/users/skills').then(r => r.data.length && setAllSkills(r.data)).catch(() => {});
+    api.get('/applications/student/my').then(r => setApplications(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/portfolio/my').then(r => setPortfolio(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/users/skills').then(r => setAllSkills(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/users/profile').then(r => {
+      const u = r.data;
+      setProfileForm({ name: u.name || '', college: u.college || '', bio: u.bio || '', location: u.location || '' });
+    }).catch(() => {});
   }, [user]);
 
   const addSkill = async (skillId) => {
@@ -54,6 +61,20 @@ export default function StudentDashboard() {
   };
   const deletePortfolio = async (id) => {
     try { await api.delete(`/portfolio/${id}`); setPortfolio(prev => prev.filter(p => p.portfolio_id !== id)); } catch (e) {}
+  };
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMsg('');
+    try {
+      await api.put('/users/profile', profileForm);
+      setProfileMsg('Profile saved successfully!');
+    } catch (err) {
+      setProfileMsg(err.response?.data?.message || 'Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const stats = {
@@ -89,6 +110,7 @@ export default function StudentDashboard() {
             </div>
           ))}
           <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+            <Link to="/messages" className="dashboard-nav-item" style={{ display: 'flex' }}>💬 Messages</Link>
             <Link to="/jobs" className="dashboard-nav-item" style={{ display: 'flex' }}>🔍 Browse Jobs</Link>
             <Link to={`/profile/${user?.id}`} className="dashboard-nav-item" style={{ display: 'flex' }}>👁 View Profile</Link>
           </div>
@@ -122,20 +144,27 @@ export default function StudentDashboard() {
               </div>
 
               <h3 style={{ marginBottom: 16 }}>Recent Applications</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {applications.slice(0, 3).map(a => (
-                  <div key={a.application_id} className="card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{a.job_title}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>by {a.client_name} • {timeAgo(a.created_at)}</div>
+              {applications.length === 0 ? (
+                <div className="card" style={{ padding: 24, textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>You haven't submitted any job applications yet.</p>
+                  <Link to="/jobs" className="btn btn-primary btn-sm">Explore Open Jobs →</Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {applications.slice(0, 3).map(a => (
+                    <div key={a.application_id || a._id} className="card" style={{ padding: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>{a.job_title}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>by {a.client_name} • {timeAgo(a.created_at)}</div>
+                        </div>
+                        <span className={`badge ${getStatusBadge(a.status)}`}>{a.status}</span>
                       </div>
-                      <span className={`badge ${getStatusBadge(a.status)}`}>{a.status}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => setTab('applications')}>View All Applications →</button>
+                  ))}
+                  <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => setTab('applications')}>View All Applications →</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -264,12 +293,12 @@ export default function StudentDashboard() {
             <div className="animate-fade-in">
               <div className="dashboard-title">Edit Profile</div>
               <div className="dashboard-subtitle">Update your profile information</div>
-              <div className="card">
+              <form className="card" onSubmit={saveProfile}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div className="form-grid">
                     <div className="form-group">
                       <label className="form-label">Name</label>
-                      <input className="form-input" defaultValue={user?.name} />
+                      <input className="form-input" value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Email</label>
@@ -278,19 +307,20 @@ export default function StudentDashboard() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">College / University</label>
-                    <input className="form-input" defaultValue={user?.college} />
+                    <input className="form-input" value={profileForm.college} onChange={e => setProfileForm(f => ({ ...f, college: e.target.value }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Location</label>
-                    <input className="form-input" placeholder="City, State" />
+                    <input className="form-input" placeholder="City, State" value={profileForm.location} onChange={e => setProfileForm(f => ({ ...f, location: e.target.value }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Bio</label>
-                    <textarea className="form-textarea" placeholder="Tell clients about yourself, your skills, and your experience..." />
+                    <textarea className="form-textarea" placeholder="Tell clients about yourself, your skills, and your experience..." value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))} />
                   </div>
-                  <button className="btn btn-primary">Save Changes</button>
+                  {profileMsg && <div style={{ color: profileMsg.includes('success') ? 'var(--success)' : 'var(--error)', fontSize: '0.9rem' }}>{profileMsg}</div>}
+                  <button type="submit" className="btn btn-primary" disabled={savingProfile}>{savingProfile ? 'Saving...' : 'Save Changes'}</button>
                 </div>
-              </div>
+              </form>
             </div>
           )}
         </main>

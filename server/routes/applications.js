@@ -53,6 +53,7 @@ router.get('/job/:jobId', authMiddleware, async (req, res) => {
       const user = app.student_id;
       return {
         ...app,
+        application_id: app._id,
         student_id: user?._id || app.student_id,
         name: user?.name,
         email: user?.email,
@@ -89,6 +90,7 @@ router.get(['/student/my', '/my-applications', '/my'], authMiddleware, async (re
       const client = job?.client_id;
       return {
         ...app,
+        application_id: app._id,
         job_id: job?._id || app.job_id,
         job_title: job?.title,
         budget: job?.budget,

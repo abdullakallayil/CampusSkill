@@ -31,6 +31,11 @@ export default function Navbar() {
           {user?.role === 'client' && (
             <NavLink to="/post-job" className={({ isActive }) => `navbar-link${isActive ? ' active' : ''}`}>Post a Job</NavLink>
           )}
+          {user && (
+            <NavLink to="/messages" className={({ isActive }) => `navbar-link${isActive ? ' active' : ''}`}>
+              💬 Messages
+            </NavLink>
+          )}
         </div>
 
         <div className="navbar-actions">
@@ -51,6 +56,9 @@ export default function Navbar() {
                   </div>
                   <Link to={dashboardPath} className="navbar-dropdown-item" onClick={() => setDropOpen(false)}>
                     <span>📊</span> Dashboard
+                  </Link>
+                  <Link to="/messages" className="navbar-dropdown-item" onClick={() => setDropOpen(false)}>
+                    <span>💬</span> Messages
                   </Link>
                   {user.role === 'student' && (
                     <Link to={`/profile/${user.id}`} className="navbar-dropdown-item" onClick={() => setDropOpen(false)}>

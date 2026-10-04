@@ -32,11 +32,12 @@ router.get('/', async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    // Attach application counts
+    // Attach application counts and normalize id
     const jobsWithCounts = await Promise.all(jobs.map(async (job) => {
       const count = await Application.countDocuments({ job_id: job._id });
       return { 
         ...job, 
+        job_id: job._id,
         client_name: job.client_id?.name, 
         client_image: job.client_id?.profile_image,
         application_count: count 
@@ -63,6 +64,7 @@ router.get('/:id', async (req, res) => {
     
     res.json({
       ...job,
+      job_id: job._id,
       client_name: job.client_id?.name,
       client_image: job.client_id?.profile_image,
       client_rating: job.client_id?.rating,
@@ -151,7 +153,7 @@ router.get('/client/my', authMiddleware, async (req, res) => {
     
     const jobsWithCounts = await Promise.all(jobs.map(async (job) => {
       const application_count = await Application.countDocuments({ job_id: job._id });
-      return { ...job, application_count };
+      return { ...job, job_id: job._id, application_count };
     }));
 
     res.json(jobsWithCounts);

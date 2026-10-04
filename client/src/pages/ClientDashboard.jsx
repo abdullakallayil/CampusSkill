@@ -17,28 +17,53 @@ export default function ClientDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+  const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [applicants, setApplicants] = useState(MOCK_APPLICANTS);
+  const [applicants, setApplicants] = useState([]);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', bio: '', location: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
-    api.get('/jobs/client/my').then(r => r.data.length && setJobs(r.data)).catch(() => {});
+    api.get('/jobs/client/my').then(r => setJobs(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/users/profile').then(r => {
+      const u = r.data;
+      setProfileForm({ name: u.name || '', bio: u.bio || '', location: u.location || '' });
+    }).catch(() => {});
   }, [user]);
 
   const viewApplicants = async (job) => {
     setSelectedJob(job);
     setTab('applicants');
     setLoadingApplicants(true);
-    api.get(`/applications/job/${job.job_id}`).then(r => r.data.length && setApplicants(r.data)).catch(() => {}).finally(() => setLoadingApplicants(false));
+    const jobId = job._id || job.job_id;
+    api.get(`/applications/job/${jobId}`)
+      .then(r => setApplicants(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setApplicants([]))
+      .finally(() => setLoadingApplicants(false));
   };
 
   const updateStatus = async (appId, status) => {
     try {
       await api.put(`/applications/${appId}/status`, { status });
-      setApplicants(prev => prev.map(a => a.application_id === appId ? { ...a, status } : a));
+      setApplicants(prev => prev.map(a => (a.application_id === appId || a._id === appId) ? { ...a, status } : a));
     } catch (e) {}
+  };
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMsg('');
+    try {
+      await api.put('/users/profile', profileForm);
+      setProfileMsg('Profile saved successfully!');
+    } catch (err) {
+      setProfileMsg(err.response?.data?.message || 'Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const stats = {
@@ -72,6 +97,7 @@ export default function ClientDashboard() {
             </div>
           ))}
           <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+            <Link to="/messages" className="dashboard-nav-item" style={{ display: 'flex' }}>💬 Messages</Link>
             <Link to="/post-job" className="dashboard-nav-item" style={{ display: 'flex' }}>➕ Post New Job</Link>
             <Link to="/students" className="dashboard-nav-item" style={{ display: 'flex' }}>🔍 Browse Students</Link>
           </div>
@@ -212,7 +238,10 @@ export default function ClientDashboard() {
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button className="btn btn-success btn-sm" onClick={() => updateStatus(a.application_id, 'accepted')}>✅ Accept</button>
                             <button className="btn btn-danger btn-sm" onClick={() => updateStatus(a.application_id, 'rejected')}>✕ Reject</button>
-                            <Link to="/messages" className="btn btn-secondary btn-sm">💬 Message</Link>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => navigate(`/messages?with=${a.student_id || a._id}&name=${encodeURIComponent(a.name || 'Student')}`)}
+                            >💬 Message</button>
                             <Link to={`/profile/${a.student_id || 1}`} className="btn btn-ghost btn-sm">View Profile →</Link>
                           </div>
                         )}
@@ -228,12 +257,12 @@ export default function ClientDashboard() {
             <div className="animate-fade-in">
               <div className="dashboard-title">Company Profile</div>
               <div className="dashboard-subtitle">Update your client information</div>
-              <div className="card">
+              <form className="card" onSubmit={saveProfile}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div className="form-grid">
                     <div className="form-group">
                       <label className="form-label">Company / Name</label>
-                      <input className="form-input" defaultValue={user?.name} />
+                      <input className="form-input" value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Email</label>
@@ -242,15 +271,16 @@ export default function ClientDashboard() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Location</label>
-                    <input className="form-input" placeholder="City, State" />
+                    <input className="form-input" placeholder="City, State" value={profileForm.location} onChange={e => setProfileForm(f => ({ ...f, location: e.target.value }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">About</label>
-                    <textarea className="form-textarea" placeholder="Tell students about your company or project..." />
+                    <textarea className="form-textarea" placeholder="Tell students about your company or project..." value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))} />
                   </div>
-                  <button className="btn btn-primary">Save Changes</button>
+                  {profileMsg && <div style={{ color: profileMsg.includes('success') ? 'var(--success)' : 'var(--error)', fontSize: '0.9rem' }}>{profileMsg}</div>}
+                  <button type="submit" className="btn btn-primary" disabled={savingProfile}>{savingProfile ? 'Saving...' : 'Save Changes'}</button>
                 </div>
-              </div>
+              </form>
             </div>
           )}
         </main>
