@@ -30,6 +30,7 @@ app.use('/api/applications', require('./routes/applications'));
 app.use('/api/portfolio', require('./routes/portfolio'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/ai', require('./routes/ai'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'CampusSkill API is running ✅' }));

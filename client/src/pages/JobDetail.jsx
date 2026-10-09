@@ -21,10 +21,65 @@ export default function JobDetail() {
   const [bidAmount, setBidAmount] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [aiMessage, setAiMessage] = useState(null);
 
   useEffect(() => {
     api.get(`/jobs/${id}`).then(r => setJob(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
+
+  const handleAiPitchAssist = async () => {
+    if (!job?.title || !job?.description) {
+      setAiMessage({ type: 'error', text: 'Job information is incomplete for AI generation.' });
+      return;
+    }
+
+    setGeneratingProposal(true);
+    setAiMessage(null);
+    setError('');
+
+    try {
+      // 1. Fetch student details (skills)
+      let studentSkills = '';
+      try {
+        const profileRes = await api.get('/users/profile');
+        if (profileRes.data?.skills && Array.isArray(profileRes.data.skills)) {
+          studentSkills = profileRes.data.skills
+            .map(s => (typeof s === 'object' ? s.skill_name : s))
+            .filter(Boolean)
+            .join(', ');
+        }
+      } catch (profileErr) {
+        console.warn('Could not fetch student profile skills:', profileErr);
+      }
+
+      // 2. Request AI proposal generation from /api/ai/generate-proposal
+      const res = await api.post('/ai/generate-proposal', {
+        job_title: job.title,
+        job_description: job.description,
+        student_skills: studentSkills
+      });
+
+      if (res.data?.proposal) {
+        setProposal(res.data.proposal);
+        setAiMessage({
+          type: 'success',
+          text: 'Proposal generated! Review and personalize it below before submitting.'
+        });
+      } else {
+        setAiMessage({
+          type: 'error',
+          text: 'No proposal returned by AI. Please try again.'
+        });
+      }
+    } catch (err) {
+      console.error('AI Pitch Assist failed:', err);
+      const msg = err.response?.data?.message || 'Failed to generate proposal. Please check your network and Gemini API key.';
+      setAiMessage({ type: 'error', text: msg });
+    } finally {
+      setGeneratingProposal(false);
+    }
+  };
 
   const handleApply = async (e) => {
     e.preventDefault();
@@ -101,8 +156,59 @@ export default function JobDetail() {
                 ) : (
                   <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div className="form-group">
-                      <label className="form-label">Your Proposal *</label>
-                      <textarea className="form-textarea" style={{ minHeight: 150 }} placeholder="Explain why you're the best fit. Mention relevant experience, your approach, and timeline..." value={proposal} onChange={e => setProposal(e.target.value)} required />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
+                        <label className="form-label" style={{ marginBottom: 0 }}>
+                          Your Proposal <span style={{ color: 'var(--error)' }}>*</span>
+                        </label>
+                        <button
+                          type="button"
+                          className="btn-ai-assist"
+                          onClick={handleAiPitchAssist}
+                          disabled={generatingProposal || applying}
+                          title="Generate a tailored 3-paragraph proposal using Gemini 2.5 Flash"
+                        >
+                          {generatingProposal ? (
+                            <>
+                              <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                              <span>Generating Pitch...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: '0.95rem' }}>✨</span>
+                              <span>AI Pitch Assist</span>
+                              <span className="ai-pill-tag">Gemini 2.5</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <textarea
+                        className="form-textarea"
+                        style={{ minHeight: 180, lineHeight: 1.6 }}
+                        placeholder="Explain why you're the best fit. Mention relevant experience, your approach, and timeline... Or click 'AI Pitch Assist' above to generate one!"
+                        value={proposal}
+                        onChange={e => setProposal(e.target.value)}
+                        required
+                      />
+
+                      {aiMessage && (
+                        <div className={`ai-feedback-banner ${aiMessage.type}`}>
+                          <span>{aiMessage.type === 'success' ? '✨' : '⚠️'}</span>
+                          <span style={{ flex: 1 }}>{aiMessage.text}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAiMessage(null)}
+                            style={{ color: 'inherit', opacity: 0.75, cursor: 'pointer', padding: '2px 6px', fontSize: '0.85rem' }}
+                            title="Dismiss"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        💡 Tip: You can freely edit and personalize the pitch before submitting.
+                      </span>
                     </div>
                     <div className="form-group">
                       <label className="form-label">Your Bid Amount (₹) — Optional</label>

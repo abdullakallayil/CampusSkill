@@ -5,30 +5,63 @@ const authMiddleware = require('../middleware/auth');
 const Job = require('../models/Job');
 const Application = require('../models/Application');
 
+/**
+ * MySQL Applications Table Definition & SQL Query Reference:
+ * -------------------------------------------------------------
+ * CREATE TABLE IF NOT EXISTS Applications (
+ *   application_id INT AUTO_INCREMENT PRIMARY KEY,
+ *   job_id INT NOT NULL,
+ *   student_id INT NOT NULL,
+ *   proposal TEXT NOT NULL,
+ *   bid_amount DECIMAL(10, 2) DEFAULT NULL,
+ *   status ENUM('pending', 'accepted', 'rejected', 'withdrawn') DEFAULT 'pending',
+ *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ *   FOREIGN KEY (job_id) REFERENCES Jobs(job_id) ON DELETE CASCADE,
+ *   FOREIGN KEY (student_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+ *   UNIQUE KEY unique_app (job_id, student_id)
+ * );
+ * 
+ * Target SQL Query:
+ * INSERT INTO Applications (job_id, student_id, proposal, bid_amount, status)
+ * VALUES (?, ?, ?, ?, 'pending');
+ * -------------------------------------------------------------
+ */
+
 // POST /api/applications — apply to a job
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role !== 'student') return res.status(403).json({ message: 'Students only' });
   
   const { job_id, proposal, bid_amount } = req.body;
-  if (!job_id || !proposal) return res.status(400).json({ message: 'job_id and proposal required' });
+  if (!job_id) return res.status(400).json({ message: 'job_id is required' });
+  if (!proposal || typeof proposal !== 'string' || !proposal.trim()) {
+    return res.status(400).json({ message: 'A written proposal is required' });
+  }
   
   try {
     const existing = await Application.findOne({ job_id, student_id: req.user.id });
     if (existing) return res.status(409).json({ message: 'Already applied to this job' });
     
+    // Saves into the proposal field of the Application document/record
+    // (Equivalent to SQL: INSERT INTO Applications (job_id, student_id, proposal, bid_amount) VALUES (?, ?, ?, ?))
     const app = await Application.create({
       job_id,
       student_id: req.user.id,
-      proposal,
-      bid_amount
+      proposal: proposal.trim(),
+      bid_amount: bidAmountNumber(bid_amount)
     });
     
-    res.status(201).json({ application_id: app._id, message: 'Application submitted' });
+    res.status(201).json({ application_id: app._id, message: 'Application submitted successfully' });
   } catch (err) {
     console.error(err); 
-    res.status(500).json({ message: 'Server error' }); 
+    res.status(500).json({ message: 'Server error while submitting application' }); 
   }
 });
+
+function bidAmountNumber(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+}
 
 // GET /api/applications/job/:jobId — get applicants for a job (client)
 router.get('/job/:jobId', authMiddleware, async (req, res) => {
